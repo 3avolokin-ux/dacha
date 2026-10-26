@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Изометрия сруба 6 × 6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+*{box-sizing:border-box} body{margin:0;font-size:14px} [hidden]{display:none!important}
+/* Layout: сцена на весь экран, панель управления поверх сцены слева снизу; на телефоне панель под сценой */
+:root {
+  --bg: #e7ebe4;
+  --surface: rgba(248, 250, 246, 0.94);
+  --fg: #1c211c;
+  --muted: #5a6458;
+  --line: #c6cdc1;
+  --accent: #7a4c22;
+  --accent-ink: #ffffff;
+  --f-display: "Alegreya", Georgia, "Times New Roman", serif;
+  --f-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131714; --surface: rgba(29, 34, 30, 0.94); --fg: #e5e9e2; --muted: #9aa396;
+    --line: #37403a; --accent: #d89c5f; --accent-ink: #1b1209; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131714; --surface: rgba(29, 34, 30, 0.94); --fg: #e5e9e2; --muted: #9aa396;
+  --line: #37403a; --accent: #d89c5f; --accent-ink: #1b1209; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.4; }
+.app { position: relative; height: 100%; display: flex; flex-direction: column; }
+header {
+  padding-block: 12px 6px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px;
+}
+h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.55rem; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
+.sub { color: var(--muted); font-size: 0.92rem; }
+.stage { position: relative; flex: 1; min-height: 320px; }
+#scene { position: absolute; inset: 0; overflow: hidden; }
+#scene canvas { display: block; touch-action: none; }
+.labels { position: absolute; top: 0; left: 0; pointer-events: none; }
+.lbl {
+  font: 500 12.5px/1.2 var(--f-body); color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+  display: flex; gap: 6px; align-items: baseline;
+}
+.lbl span { font: 400 11px var(--f-mono); color: var(--muted); }
+
+.panel {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 16px;
+  width: 300px; max-height: calc(100% - 90px); overflow: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; display: flex; flex-direction: column; gap: 14px;
+  backdrop-filter: blur(6px);
+}
+.group { display: flex; flex-direction: column; gap: 7px; }
+.cap { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.seg button {
+  font: 500 13px var(--f-body); color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 0; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.seg button:focus-visible, .copy:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.range { display: flex; align-items: center; gap: 10px; }
+.range input { flex: 1; accent-color: var(--accent); }
+.range output { font: 400 12px var(--f-mono); min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.checks label { display: flex; gap: 7px; align-items: center; cursor: pointer; font-size: 14px; }
+.checks input { accent-color: var(--accent); }
+.rooms { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; margin: 0; font-size: 14px; }
+.rooms dd { margin: 0; font: 400 12.5px var(--f-mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.rooms dt { margin: 0; }
+.note { color: var(--muted); font-size: 12.5px; margin: 0; }
+details { border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.prompt { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.prompt textarea {
+  width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical;
+  font: 400 12.5px/1.45 var(--f-body); color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px;
+}
+.prow { display: flex; justify-content: space-between; align-items: center; }
+.copy {
+  font: 500 12.5px var(--f-body); background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer;
+}
+.hint {
+  position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: 16px;
+  font: 400 11.5px var(--f-mono); color: var(--muted); pointer-events: none; text-align: right;
+}
+.err { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); padding: 24px; text-align: center; }
+
+@media (max-width: 680px) {
+  .app { height: auto; min-height: 100%; }
+  .stage { flex: none; height: 64vh; }
+  .panel {
+    position: static; width: auto; max-height: none; backdrop-filter: none;
+    margin-block: 12px 20px;
+    margin-left: max(16px, env(safe-area-inset-left, 0px));
+    margin-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Сруб 6 × 6</h1>
+    <span class="sub">СНТ, Нягань · по эскизу планировки и осмотру 26.10.2026</span>
+  </header>
+  <div class="stage">
+    <div id="scene"></div>
+    <div class="hint">вращать: перетащить · масштаб: колесо или щипок</div>
+  </div>
+  <aside class="panel" aria-label="Управление моделью">
+    <div class="group">
+      <span class="cap">Вид</span>
+      <div class="seg" role="group" aria-label="Вид">
+        <button id="v-front" data-view="front" aria-pressed="true">Спереди</button>
+        <button id="v-back" data-view="back" aria-pressed="false">Сзади</button>
+        <button id="v-side" data-view="side" aria-pressed="false">Сбоку</button>
+        <button id="v-plan" data-view="plan" aria-pressed="false">План</button>
+      </div>
+    </div>
+    <div class="group">
+      <label class="cap" for="roof">Кровля, непрозрачность</label>
+      <div class="range"><input id="roof" type="range" min="0" max="100" value="28"><output id="roof-out" for="roof">28%</output></div>
+    </div>
+    <div class="checks">
+      <label><input id="c-labels" type="checkbox" checked> Подписи</label>
+      <label><input id="c-rafters" type="checkbox" checked> Стропила</label>
+      <label><input id="c-ceiling" type="checkbox"> Потолок</label>
+      <label><input id="c-trees" type="checkbox" checked> Сосны</label>
+    </div>
+    <div class="group">
+      <span class="cap">Помещения</span>
+      <dl class="rooms">
+        <dt>Кухня-гостиная</dt><dd>≈ 20,5 м²</dd>
+        <dt>Детская</dt><dd>≈ 5,6 м²</dd>
+        <dt>Санузел</dt><dd>≈ 4,5 м²</dd>
+        <dt>Веранда открытая</dt><dd>6,0 × 3,0 м</dd>
+      </dl>
+    </div>
+    <p class="note">Размеры на глаз, без рулетки. Высота в чистоте около 2,25 м, уклон кровли принят 30°.</p>
+    <details>
+      <summary>Промпт для картинки</summary>
+      <div class="prompt">
+        <div class="prow"><span class="cap">Русский</span><button class="copy" id="copy-ru" data-for="p-ru">Копировать</button></div>
+        <textarea id="p-ru" readonly>Изометрическая 3D-иллюстрация в разрезе: небольшой сибирский дачный дом 6 × 6 м из бревна ручной окорки, рубка углов в лапу без выпусков бревен. Снаружи бревно серебристо-серое от времени, внутри бревно под маслом медового оттенка, широкая доска пола. Двускатная крыша из сиреневого профлиста, полупрозрачная: сквозь нее видны стропила и весь интерьер. Дом стоит на винтовых сваях со стальной обвязкой в 0,6 м над ровным песчаным грунтом с пятнами мха. Главный фронтон почти полностью остеклен и симметричен: две одинаковые панорамные пластиковые конструкции 1,75 × 2,0 м в антрацитовом профиле, слева входная группа с остекленной дверью, справа глухое окно в пол из двух половин с таким же импостом, как у входной группы, между ними узкий бревенчатый простенок. Они выходят на открытую веранду 6 × 3 м из лиственницы с перилами и деревянными ступенями по центру. Внутри: кухня-гостиная около 20 м²; кухня 2 м вдоль боковой стены, мойка под окном; вешалка у двери; черная печь-камин с большим стеклом стоит у входа на металлическом листе, отступив от фасада вглубь комнаты, стальная труба через крышу; обеденный стол на четверых в углу между окнами; серый диван у светлой каркасной перегородки из вагонки. За перегородкой маленькая детская с односпальной кроватью вдоль задней стены и письменным столом, и санузел с торфяным туалетом, раковиной под узким окном с матовым стеклом и белым бойлером. Боковые окна 1,4 × 0,95 м из двух половин и два узких окна заднего фасада такой же высоты, все окна дома в черном пластиковом профиле в светлой деревянной обсаде. Сзади и сбоку высокие сосны. Поздняя осень, вечер, теплый свет из окон и огонь в печи, мангал на площадке в 6 м перед верандой. Стиль: архитектурная диорама, ортографическая камера, мягкий рассеянный свет, высокая детализация. Без людей, без надписей, без душевой кабины, без второго этажа, без кирпичной трубы, без бетонного фундамента.</textarea>
+        <div class="prow"><span class="cap">English</span><button class="copy" id="copy-en" data-for="p-en">Копировать</button></div>
+        <textarea id="p-en" readonly>Isometric 3D cutaway illustration of a small Siberian log cabin, 6 × 6 m, hand-hewn pine logs, flush dovetail corners with no protruding log ends. Exterior logs weathered silver-grey, interior logs oiled honey tone, wide plank floor. Gable roof of lilac-violet corrugated metal sheet rendered semi-transparent, revealing the rafters and the whole interior. The cabin stands on steel screw piles with a steel frame 0.6 m above flat sandy ground with patches of moss. The front gable is almost fully glazed and symmetrical: two identical 1.75 × 2.0 m anthracite uPVC glazed units, an entrance unit with a glass door on the left and a fixed non-opening floor-to-ceiling window on the right split into two panes by a mullion matching the entrance unit, separated by a narrow log pier, opening onto an open 6 × 3 m larch deck with railing and central wooden steps. Interior: a 20 m² kitchen-living room; 2 m kitchen counter along the side wall with the sink under the window; coat hooks by the door; black wood-burning stove with a large glass door standing near the entrance on a steel floor plate, set back from the facade into the room, steel flue through the roof; dining table for four in the corner between windows; grey sofa against a light timber partition. Behind the partition: a tiny kids room with a single bed along the back wall and a small desk, and a bathroom with a compost toilet, a washbasin under a narrow frosted window and a white water heater. Side windows 1.4 × 0.95 m split into two panes and two narrow back windows of the same height; every window in the house has black uPVC frames set in light wooden casings. Tall pine forest behind and to the side. Late autumn evening, warm light from the windows and the stove fire, a barbecue grill on a stone pad 6 m in front of the deck. Style: architectural diorama, orthographic camera, soft global illumination, highly detailed. No people, no text, no shower, no second floor, no brick chimney, no concrete foundation.</textarea>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script>
+document.querySelectorAll('.copy').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ta = document.getElementById(btn.dataset.for);
+    const done = () => { btn.textContent = 'Скопировано'; setTimeout(() => btn.textContent = 'Копировать', 1600); };
+    const fallback = () => { ta.focus(); ta.select(); btn.textContent = 'Выделено, Ctrl+C'; };
+    try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (e) { fallback(); }
+  });
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const host = document.getElementById('scene');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+} catch (e) {
+  host.innerHTML = '<div class="err">Браузер не поддерживает WebGL, 3D-модель не отображается.</div>';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer();
+labelR.domElement.className = 'labels';
+host.appendChild(labelR.domElement);
+
+const scene = new THREE.Scene();
+const S = 8.2;
+const cam = new THREE.OrthographicCamera(-S, S, S, -S, 0.1, 400);
+const target = new THREE.Vector3(3, 1.7, 0.9);
+const VIEWS = {
+  front: new THREE.Vector3(-1, 1, -1),
+  back: new THREE.Vector3(1, 1, 1),
+  side: new THREE.Vector3(1.25, 0.9, -0.75),
+  plan: new THREE.Vector3(0, 1, -0.002)
+};
+const DIST = 60;
+cam.position.copy(target).add(VIEWS.front.clone().normalize().multiplyScalar(DIST));
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.target.copy(target);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minZoom = 0.6; controls.maxZoom = 5;
+controls.maxPolarAngle = Math.PI / 2 - 0.04;
+
+// ---------- освещение ----------
+scene.add(new THREE.HemisphereLight(0xe4ecf2, 0x8c7a58, 1.15));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.1);
+sun.position.set(-7, 16, -9);
+sun.target.position.set(3, 0, 3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 60 });
+sun.shadow.bias = -0.0006;
+scene.add(sun, sun.target);
+
+// ---------- материалы и текстуры ----------
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const grain = canvasTex(64, 256, (g, w, h) => {
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * w, a = 0.05 + rnd() * 0.12;
+    g.fillStyle = `rgba(60,40,20,${a})`; g.fillRect(x, 0, 1 + rnd() * 2, h);
+  }
+});
+const boards = (vertical) => canvasTex(64, 64, (g, w, h) => {
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 18; i++) { g.fillStyle = `rgba(70,45,20,${0.04 + rnd() * 0.06})`; vertical ? g.fillRect(rnd() * w, 0, 1, h) : g.fillRect(0, rnd() * h, w, 1); }
+  g.fillStyle = 'rgba(40,25,10,0.55)';
+  vertical ? g.fillRect(w - 3, 0, 3, h) : g.fillRect(0, h - 3, w, 3);
+});
+const ribs = canvasTex(8, 64, (g, w, h) => {
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(0, 0, w, 10);
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(0, 12, w, 4);
+});
+
+const M = {};
+const std = (key, color, o = {}) => (M[key] ||= new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...o }));
+const logMats = ['#a58b69', '#9c8262', '#ad936f', '#967d5f', '#a88e6b'].map((c, i) => std('log' + i, c, { map: grain }));
+const frameMat = std('frame', '#c9ab7f');
+const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xcfe3ee, roughness: 0.05, transparent: true, opacity: 0.28, depthWrite: false });
+const steel = std('steel', '#7c8288', { metalness: 0.6, roughness: 0.45 });
+
+// ---------- примитивы ----------
+function addBox(x0, x1, y0, y1, z0, z1, mat, parent = scene, shadow = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)), mat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.castShadow = shadow; m.receiveShadow = true;
+  parent.add(m); return m;
+}
+function addCyl(r, x, y0, y1, z, mat, parent = scene, seg = 16) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, y1 - y0, seg), mat);
+  m.position.set(x, (y0 + y1) / 2, z); m.castShadow = true; m.receiveShadow = true;
+  parent.add(m); return m;
+}
+
+// ---------- размеры ----------
+const F = 0.9;          // чистый пол
+const R = 0.115;        // радиус бревна
+const STEP = 0.2;       // шаг венцов
+const N = 13;           // венцов
+const W0 = 0.67 + 0.02 + N * STEP + 0.04; // верх стен ≈ 3,33
+const CEIL = F + 2.25;
+const TAN = Math.tan(Math.PI / 6), COS = Math.cos(Math.PI / 6), SIN = 0.5;
+const WALLC = { front: 0.11, back: 5.89, left: 0.11, right: 5.89 };
+
+// ---------- сваи и обвязка ----------
+for (const x of [0.11, 3, 5.89]) for (const z of [0.11, 3, 3.92, 5.89]) addCyl(0.066, x, 0, 0.56, z, steel);
+addBox(0.06, 5.94, 0.55, 0.67, 0.05, 0.17, steel);
+addBox(0.06, 5.94, 0.55, 0.67, 5.83, 5.95, steel);
+addBox(0.05, 0.17, 0.55, 0.67, 0.06, 5.94, steel);
+addBox(5.83, 5.95, 0.55, 0.67, 0.06, 5.94, steel);
+addBox(0.17, 5.83, 0.55, 0.67, 3.87, 3.97, steel);
+addBox(0.22, 5.78, 0.67, F - 0.01, 0.22, 5.78, std('subfloor', '#5d4a36'));
+
+// ---------- проемы ----------
+const openings = { front: [], back: [], left: [], right: [] };
+function wallBox(wall, a0, a1, y0, y1, d0, d1, mat, shadow = true) {
+  const c = WALLC[wall], s = (wall === 'front' || wall === 'left') ? 1 : -1;
+  const e0 = c + s * d0, e1 = c + s * d1, lo = Math.min(e0, e1), hi = Math.max(e0, e1);
+  return (wall === 'front' || wall === 'back') ? addBox(a0, a1, y0, y1, lo, hi, mat, scene, shadow) : addBox(lo, hi, y0, y1, a0, a1, mat, scene, shadow);
+}
+function opening(wall, a0, a1, y0, y1, kind) {
+  openings[wall].push({ a0, a1, y0, y1 });
+  const t = 0.05, D = 0.27;
+  const parts = [[a0 - t, a0, y0, y1 + t], [a1, a1 + t, y0, y1 + t], [a0 - t, a1 + t, y1, y1 + t]];
+  if (kind !== 'door') parts.push([a0 - t, a1 + t, y0 - t, y0]);
+  for (const p of parts) wallBox(wall, p[0], p[1], p[2], p[3], -D / 2, D / 2, frameMat);
+  if (kind === 'window') {
+    const g = wallBox(wall, a0, a1, y0, y1, -0.005, 0.005, glassMat, false);
+    g.receiveShadow = false;
+    // импост
+    wallBox(wall, (a0 + a1) / 2 - 0.02, (a0 + a1) / 2 + 0.02, y0, y1, -0.03, 0.03, std('imp', '#3a3632'));
+  }
+  if (kind === 'door') wallBox(wall, a0 + 0.01, a1 - 0.01, y0, y1 - 0.01, 0.03, 0.08, std('door', '#6a4a2e'));
+}
+// фронтон: две одинаковые ПВХ-конструкции 1,75 × 2,0, простенки 0,8 / 0,9 / 0,8
+function pvc(wall, a0, a1, y0, y1, doorLeft) {
+  openings[wall].push({ a0, a1, y0, y1 });
+  const t = 0.05, D = 0.27, f = 0.065;
+  for (const p of [[a0 - t, a0, y0 - t, y1 + t], [a1, a1 + t, y0 - t, y1 + t], [a0 - t, a1 + t, y1, y1 + t], [a0 - t, a1 + t, y0 - t, y0]]) wallBox(wall, p[0], p[1], p[2], p[3], -D / 2, D / 2, frameMat);
+  const pf = std('pvc', '#383c40', { roughness: 0.45 });
+  const s = doorLeft ? a0 + 0.9 : a1 - 0.9;
+  for (const p of [[a0, a0 + f, y0, y1], [a1 - f, a1, y0, y1], [a0, a1, y1 - f, y1], [a0, a1, y0, y0 + (doorLeft ? 0.03 : f)], [s - f / 2, s + f / 2, y0, y1]]) wallBox(wall, p[0], p[1], p[2], p[3], -0.04, 0.04, pf);
+  // створка: дверь у угла слева, поворотно-откидная створка у угла справа
+  const [l0, l1] = doorLeft ? [a0 + f, s - f / 2] : [s + f / 2, a1 - f];
+  if (doorLeft) for (const p of [[l0, l0 + 0.05, y0, y1 - f], [l1 - 0.05, l1, y0, y1 - f], [l0, l1, y1 - f - 0.05, y1 - f], [l0, l1, y0 + 0.03, y0 + (doorLeft ? 0.12 : 0.11)]]) wallBox(wall, p[0], p[1], p[2], p[3], -0.05, 0.05, pf);
+  const hx = doorLeft ? l1 - 0.11 : l0 + 0.09;
+  if (doorLeft) wallBox(wall, hx - 0.015, hx + 0.015, y0 + (doorLeft ? 0.85 : 1.0), y0 + (doorLeft ? 1.25 : 1.15), -0.09, 0.09, std('handle', '#c9ccce', { metalness: 0.8, roughness: 0.3 }));
+  wallBox(wall, a0 + f, a1 - f, y0 + f, y1 - f, -0.005, 0.005, glassMat, false).receiveShadow = false;
+}
+pvc('front', 0.8, 2.55, F + 0.02, F + 2.0, true);    // входная группа
+pvc('front', 3.45, 5.2, F + 0.02, F + 2.0, false);   // глухое окно в пол из двух половин
+// боковые и задние окна: черный ПВХ, одна поворотно-откидная створка
+const frost = new THREE.MeshPhysicalMaterial({ color: 0xeef1f2, roughness: 0.6, transparent: true, opacity: 0.8 });
+function pvcWin(wall, a0, a1, y0, y1, split, sashAt, frosted) {
+  openings[wall].push({ a0, a1, y0, y1 });
+  const t = 0.05, D = 0.27, f = 0.065;
+  for (const p of [[a0 - t, a0, y0 - t, y1 + t], [a1, a1 + t, y0 - t, y1 + t], [a0 - t, a1 + t, y1, y1 + t], [a0 - t, a1 + t, y0 - t, y0]]) wallBox(wall, p[0], p[1], p[2], p[3], -D / 2, D / 2, frameMat);
+  const pf = std('pvc', '#383c40', { roughness: 0.45 });
+  for (const p of [[a0, a0 + f, y0, y1], [a1 - f, a1, y0, y1], [a0, a1, y1 - f, y1], [a0, a1, y0, y0 + f]]) wallBox(wall, p[0], p[1], p[2], p[3], -0.04, 0.04, pf);
+  const s = (a0 + a1) / 2;
+  if (split) wallBox(wall, s - f / 2, s + f / 2, y0, y1, -0.04, 0.04, pf);
+  const [l0, l1] = !split ? [a0 + f, a1 - f] : sashAt === 'a1' ? [s + f / 2, a1 - f] : [a0 + f, s - f / 2];
+  for (const p of [[l0, l0 + 0.045, y0 + f, y1 - f], [l1 - 0.045, l1, y0 + f, y1 - f], [l0, l1, y1 - f - 0.045, y1 - f], [l0, l1, y0 + f, y0 + f + 0.045]]) wallBox(wall, p[0], p[1], p[2], p[3], -0.05, 0.05, pf);
+  const hx = (sashAt === 'a1' || !split) ? l0 + 0.07 : l1 - 0.07;
+  wallBox(wall, hx - 0.015, hx + 0.015, (y0 + y1) / 2 - 0.08, (y0 + y1) / 2 + 0.08, -0.09, 0.09, std('handle', '#c9ccce', { metalness: 0.8, roughness: 0.3 }));
+  wallBox(wall, a0 + f, a1 - f, y0 + f, y1 - f, -0.005, 0.005, frosted ? frost : glassMat, false).receiveShadow = false;
+}
+pvcWin('left', 1.6, 3.0, F + 0.9, F + 1.85, true, 'a0');    // окно кухни
+pvcWin('right', 1.6, 3.0, F + 0.9, F + 1.85, true, 'a1');
+pvcWin('back', 1.2, 1.8, F + 0.9, F + 1.85, false, null, true);   // санузел, матовое стекло
+pvcWin('back', 4.2, 4.8, F + 0.9, F + 1.85, false, null);         // детская
+
+// ---------- венцы ----------
+function cut(segs, a, b) {
+  const out = [];
+  for (const [s, e] of segs) {
+    if (b <= s || a >= e) { out.push([s, e]); continue; }
+    if (a > s) out.push([s, a]);
+    if (b < e) out.push([b, e]);
+  }
+  return out;
+}
+let li = 0;
+function logRun(wall, yc) {
+  let segs = [[0, 6]];
+  for (const o of openings[wall]) if (yc > o.y0 - 0.03 && yc < o.y1 + 0.03) segs = cut(segs, o.a0 - 0.05, o.a1 + 0.05);
+  for (const [a, b] of segs) {
+    if (b - a < 0.06) continue;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, b - a, 14), logMats[(li++) % logMats.length]);
+    if (wall === 'front' || wall === 'back') { m.rotation.z = Math.PI / 2; m.position.set((a + b) / 2, yc, WALLC[wall]); }
+    else { m.rotation.x = Math.PI / 2; m.position.set(WALLC[wall], yc, (a + b) / 2); }
+    m.castShadow = true; m.receiveShadow = true; scene.add(m);
+  }
+}
+for (let i = 0; i < N; i++) {
+  const y1 = 0.67 + 0.11 + i * STEP, y2 = y1 + STEP / 2;
+  logRun('front', y1); logRun('back', y1);
+  logRun('left', y2); logRun('right', y2);
+}
+
+// ---------- фронтоны ----------
+function gable(z0, color) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.02, W0 - 0.02); sh.lineTo(6.02, W0 - 0.02); sh.lineTo(3, W0 + 3 * TAN); sh.closePath();
+  const tex = boards(true).clone(); tex.needsUpdate = true; tex.repeat.set(1 / 0.16, 1);
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false }),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.9, map: tex }));
+  m.position.z = z0; m.castShadow = true; m.receiveShadow = true; scene.add(m);
+}
+gable(-0.02, '#ab977a');
+gable(5.98, '#d8b24c');
+
+// ---------- пол, потолок ----------
+const floorTex = boards(true); floorTex.repeat.set(5.56 / 0.15, 1);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(5.56, 5.56), std('floor', '#c69866', { map: floorTex }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(3, F, 3); floor.receiveShadow = true; scene.add(floor);
+
+const ceilTex = boards(true); ceilTex.repeat.set(5.56 / 0.15, 1);
+const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(5.56, 5.56),
+  new THREE.MeshStandardMaterial({ color: '#cdb38a', map: ceilTex, transparent: true, opacity: 0.85, side: THREE.DoubleSide, roughness: 0.9 }));
+ceiling.rotation.x = Math.PI / 2; ceiling.position.set(3, CEIL, 3); ceiling.visible = false; scene.add(ceiling);
+
+// ---------- перегородки ----------
+const vag = std('vag', '#e3cfa8');
+const PZ = 3.92, PT = 0.05;
+for (const [a, b] of [[0.22, 1.0], [1.75, 4.85], [5.6, 5.78]]) addBox(a, b, F, CEIL, PZ - PT, PZ + PT, vag);
+for (const [a, b] of [[1.0, 1.75], [4.85, 5.6]]) addBox(a, b, F + 2.0, CEIL, PZ - PT, PZ + PT, vag);
+addBox(2.7, 2.8, F, CEIL, PZ + PT, 5.78, vag);
+// двери санузла и детской открываются наружу, в кухню-гостиную
+function leaf(hx, hz, dir, angle) {
+  const g = new THREE.Group(); g.position.set(hx, F, hz);
+  addBox(dir > 0 ? 0 : -0.74, dir > 0 ? 0.74 : 0, 0, 1.98, -0.02, 0.02, std('idoor', '#bfa27a'), g);
+  g.rotation.y = angle; scene.add(g);
+}
+leaf(1.0, PZ - PT, 1, THREE.MathUtils.degToRad(62));
+leaf(5.6, PZ - PT, -1, THREE.MathUtils.degToRad(-62));
+
+// ---------- кухня ----------
+addBox(0.22, 0.82, F, F + 0.82, 1.2, 3.2, std('cab', '#5f6b62'));
+addBox(0.2, 0.84, F + 0.82, F + 0.86, 1.18, 3.22, std('top', '#8c6a46'));
+addBox(0.32, 0.72, F + 0.84, F + 0.87, 2.05, 2.55, std('sink', '#c8cdd1', { metalness: 0.7, roughness: 0.3 }));
+addBox(0.3, 0.74, F + 0.86, F + 0.88, 1.35, 1.85, std('hob', '#1c1c1c', { roughness: 0.3 }));
+// вешалка
+addBox(0.22, 0.26, F + 1.6, F + 1.72, 0.3, 0.85, std('hook', '#7a5a3a'));
+addBox(0.27, 0.36, F + 0.85, F + 1.6, 0.42, 0.72, std('coat', '#3f5a48'));
+
+// ---------- печь-камин ----------
+addBox(2.35, 3.45, F, F + 0.012, 0.95, 2.15, std('plate', '#8e9194', { metalness: 0.4, roughness: 0.5 }));
+addBox(2.62, 3.18, F, F + 0.95, 1.1, 1.58, std('stove', '#1e1e1f', { roughness: 0.6 }));
+const glow = new THREE.MeshStandardMaterial({ color: '#ffb35c', emissive: '#ff7a1a', emissiveIntensity: 1.6 });
+addBox(2.72, 3.08, F + 0.28, F + 0.74, 1.58, 1.585, glow, scene, false);
+const fire = new THREE.PointLight(0xff8a3c, 6, 5, 2); fire.position.set(2.9, F + 0.55, 1.9); scene.add(fire);
+const RIDGE = W0 + 0.09 + 3 * TAN;
+addCyl(0.08, 2.9, F + 0.95, CEIL, 1.34, std('pipe', '#202022'));
+addCyl(0.1, 2.9, CEIL, RIDGE + 0.75, 1.34, std('flue', '#b7bcc1', { metalness: 0.8, roughness: 0.35 }));
+const capc = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.16, 16), M.flue);
+capc.position.set(2.9, RIDGE + 0.85, 1.34); scene.add(capc);
+
+// ---------- столовая ----------
+const tbl = std('table', '#9a7146');
+addBox(4.75, 5.55, F + 0.72, F + 0.76, 1.2, 2.4, tbl);
+for (const [x, z] of [[4.8, 1.25], [5.5, 1.25], [4.8, 2.35], [5.5, 2.35]]) addBox(x - 0.025, x + 0.025, F, F + 0.72, z - 0.025, z + 0.025, tbl);
+function chair(x, z, rot) {
+  const g = new THREE.Group(); g.position.set(x, F, z); g.rotation.y = rot;
+  const c = std('chair', '#3d3a36');
+  addBox(-0.21, 0.21, 0.43, 0.47, -0.21, 0.21, c, g);
+  addBox(-0.21, 0.21, 0.47, 0.9, -0.23, -0.19, c, g);
+  for (const [a, b] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) addBox(a - 0.02, a + 0.02, 0, 0.43, b - 0.02, b + 0.02, c, g);
+  scene.add(g);
+}
+chair(4.45, 1.55, -Math.PI / 2);
+chair(4.45, 2.1, -Math.PI / 2);
+chair(5.15, 0.88, 0);
+chair(5.15, 2.72, Math.PI);
+
+// ---------- диван ----------
+const sofa = std('sofa', '#6c7a72');
+addBox(2.25, 4.25, F, F + 0.42, 3.02, 3.87, sofa);
+addBox(2.25, 4.25, F + 0.42, F + 0.85, 3.65, 3.87, sofa);
+addBox(2.25, 2.42, F + 0.42, F + 0.64, 3.02, 3.65, sofa);
+addBox(4.08, 4.25, F + 0.42, F + 0.64, 3.02, 3.65, sofa);
+addBox(2.45, 4.05, F, F + 0.006, 2.2, 2.95, std('rug', '#a8623d'), scene, false);
+
+// ---------- детская ----------
+addBox(3.7, 5.74, F, F + 0.32, 4.84, 5.74, std('bed', '#b48b5c'));
+addBox(3.74, 5.7, F + 0.32, F + 0.48, 4.88, 5.7, std('matt', '#ecebe6'));
+addBox(3.74, 5.0, F + 0.48, F + 0.52, 4.88, 5.7, std('blanket', '#5d7da0'));
+addBox(5.25, 5.66, F + 0.48, F + 0.6, 4.95, 5.63, std('pillow', '#f5f4ef'));
+addBox(2.86, 3.62, F + 0.72, F + 0.76, 5.22, 5.74, tbl);
+addBox(2.88, 2.92, F, F + 0.72, 5.24, 5.72, tbl); addBox(3.56, 3.6, F, F + 0.72, 5.24, 5.72, tbl);
+chair(3.24, 4.92, Math.PI);
+
+// ---------- санузел ----------
+const white = std('white', '#f1f1ee', { roughness: 0.4 });
+addBox(0.28, 0.8, F, F + 0.45, 5.05, 5.6, white);
+addBox(0.3, 0.78, F + 0.45, F + 0.48, 5.05, 5.45, std('seat', '#d9d4c7'));
+addBox(1.25, 1.75, F, F + 0.78, 5.38, 5.76, std('vanity', '#cdbb98'));
+addBox(1.28, 1.72, F + 0.78, F + 0.86, 5.4, 5.74, white);
+const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.62, 20), white);
+boiler.position.set(0.45, F + 1.85, 4.4); boiler.castShadow = true; scene.add(boiler);
+
+// ---------- кровля и стропила ----------
+function slopeBox(len, thick, width, cx, cy, cz, ang, mat, parent, shadow = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(len, thick, width), mat);
+  m.position.set(cx, cy, cz); m.rotation.z = ang; m.castShadow = shadow; m.receiveShadow = true;
+  parent.add(m); return m;
+}
+const rafters = new THREE.Group(); scene.add(rafters);
+const roof = new THREE.Group(); scene.add(roof);
+const OV = 0.5;                                  // свес карниза
+const rLen = (3 + OV) / COS;
+const rcx = (-OV + 3) / 2;
+const rcy = W0 + 0.09 + rcx * TAN;
+const rafterMat = std('rafter', '#b08b5d');
+for (let z = -0.3; z <= 6.31; z += 0.6) {
+  slopeBox(rLen, 0.15, 0.05, rcx, rcy, z, Math.PI / 6, rafterMat, rafters);
+  slopeBox(rLen, 0.15, 0.05, 6 - rcx, rcy, z, -Math.PI / 6, rafterMat, rafters);
+}
+const roofTex = ribs; roofTex.repeat.set(1, 6.8 / 0.115);
+const roofMat = new THREE.MeshStandardMaterial({ color: '#7d6596', map: roofTex, metalness: 0.35, roughness: 0.5, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide });
+const off = 0.075 + 0.05;
+slopeBox(rLen + 0.02, 0.025, 6.8, rcx - SIN * off, rcy + COS * off, 3, Math.PI / 6, roofMat, roof, false);
+slopeBox(rLen + 0.02, 0.025, 6.8, 6 - rcx + SIN * off, rcy + COS * off, 3, -Math.PI / 6, roofMat, roof, false);
+addBox(2.84, 3.16, RIDGE + 0.2, RIDGE + 0.27, -0.4, 6.4, roofMat, roof, false);
+
+// ---------- веранда ----------
+const deck = std('deck', '#b9895a');
+const beam = std('beam', '#7f6243');
+for (const x of [0.1, 2.0, 4.0, 5.9]) for (const z of [-2.9, -1.5, -0.12]) addCyl(0.054, x, 0, 0.62, z, steel);
+for (const z of [-2.9, -1.5, -0.12]) addBox(0, 6, 0.62, 0.81, z - 0.05, z + 0.05, beam);
+for (let i = 0; i < 21; i++) { const z0 = -3 + i * 0.1428; addBox(0, 6, 0.81, 0.85, z0 + 0.006, z0 + 0.137, deck); }
+// ступени
+const SX0 = 2.4, SX1 = 3.6, RISE = 0.17, RUN = 0.28;
+for (let i = 0; i < 4; i++) {
+  const top = 0.85 - RISE * (i + 1), z1 = -3 - RUN * i, z0 = z1 - RUN;
+  addBox(SX0, SX1, top - 0.04, top, z0, z1, deck);
+}
+const sLen = Math.hypot(RUN * 4 + 0.1, 0.85), sAng = Math.atan2(0.85, RUN * 4 + 0.1);
+for (const x of [SX0 + 0.03, SX1 - 0.03]) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, sLen), beam);
+  m.position.set(x, 0.85 / 2 - 0.1, -3 - (RUN * 4 + 0.1) / 2); m.rotation.x = -sAng; m.castShadow = true; scene.add(m);
+}
+// перила
+const rail = std('rail', '#a77b4f');
+const post = (x, z) => addBox(x - 0.04, x + 0.04, 0.85, 1.78, z - 0.04, z + 0.04, rail);
+for (const z of [-2.96, -1.5]) { post(0.04, z); post(5.96, z); }
+for (const x of [1.2, 2.4, 3.6, 4.8]) post(x, -2.96);
+for (const y of [1.3, 1.72]) {
+  addBox(0, 0.08, y, y + 0.06, -3, -0.02, rail);
+  addBox(5.92, 6, y, y + 0.06, -3, -0.02, rail);
+  addBox(0, 2.44, y, y + 0.06, -3, -2.92, rail);
+  addBox(3.56, 6, y, y + 0.06, -3, -2.92, rail);
+}
+
+// ---------- мангал ----------
+addBox(0.7, 1.7, 0, 0.05, -7.1, -6.1, std('pad', '#8d8f8c'));
+const bl = std('grill', '#222222', { metalness: 0.5, roughness: 0.6 });
+addBox(0.85, 1.55, 0.72, 0.96, -6.75, -6.45, bl);
+for (const [x, z] of [[0.88, -6.72], [1.52, -6.72], [0.88, -6.48], [1.52, -6.48]]) addBox(x - 0.015, x + 0.015, 0.05, 0.72, z - 0.015, z + 0.015, bl);
+
+// ---------- участок ----------
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 32), std('sand', '#cbbd93'));
+ground.rotation.x = -Math.PI / 2; ground.position.set(3, 0, 1.5); ground.receiveShadow = true; scene.add(ground);
+const moss = [std('moss1', '#8e9a5d'), std('moss2', '#7c8a52'), std('moss3', '#a2a56e')];
+for (let i = 0; i < 46; i++) {
+  const x = -10 + rnd() * 26, z = -13 + rnd() * 28;
+  if (x > -0.6 && x < 6.6 && z > -4.6 && z < 6.6) continue;
+  const m = new THREE.Mesh(new THREE.CircleGeometry(0.3 + rnd() * 1.1, 18), moss[i % 3]);
+  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.004 + i * 0.0001, z); m.receiveShadow = true; scene.add(m);
+}
+const trees = new THREE.Group(); scene.add(trees);
+const bark = std('bark', '#7a5236'), needles = [std('n1', '#2f4a31'), std('n2', '#38553a')];
+function pine(x, z, h) {
+  addCyl(0.14, x, 0, h * 0.62, z, bark, trees, 10);
+  for (let k = 0; k < 3; k++) {
+    const r = 1.25 - k * 0.32, hh = h * 0.3;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(r, hh, 12), needles[k % 2]);
+    c.position.set(x, h * 0.5 + k * h * 0.17 + hh / 2, z); c.castShadow = true; trees.add(c);
+  }
+}
+for (const [x, z, h] of [[-4, 11, 9], [-1, 12.5, 10.5], [2.2, 11.5, 9.5], [5, 13, 11], [8, 11.8, 9.8], [10.6, 12.8, 10], [-6.5, 8.5, 9.2], [-7.5, 4, 10.4], [-6.2, -0.5, 9], [-7.8, -5, 10], [12, 7, 9.6], [12.5, 1.5, 10.2]]) pine(x, z, h);
+
+// ---------- подписи ----------
+const labels = [];
+function label(text, sub, x, y, z) {
+  const d = document.createElement('div'); d.className = 'lbl';
+  d.innerHTML = `${text}${sub ? `<span>${sub}</span>` : ''}`;
+  const o = new CSS2DObject(d); o.position.set(x, y, z); scene.add(o); labels.push(o);
+}
+label('Кухня-гостиная', '≈20,5 м²', 1.7, F + 1.2, 2.2);
+label('Детская', '≈5,6 м²', 4.3, F + 1.2, 4.9);
+label('Санузел', '≈4,5 м²', 1.6, F + 1.2, 4.95);
+label('Печь-камин', '', 2.9, F + 1.25, 1.34);
+label('Входная группа', '1,75 × 2,0', 1.67, F + 2.25, -0.25);
+label('Глухое окно', '1,75 × 2,0', 4.33, F + 2.25, -0.25);
+label('Веранда', '6,0 × 3,0', 3, 1.25, -1.6);
+label('Мангал', '6 м до сруба', 1.2, 1.35, -6.6);
+
+// ---------- управление ----------
+const roofIn = document.getElementById('roof'), roofOut = document.getElementById('roof-out');
+function setRoof(v) {
+  const o = v / 100; roofOut.value = v + '%';
+  roofMat.opacity = Math.max(o, 0.02);
+  const solid = o >= 0.99;
+  roofMat.transparent = !solid; roofMat.depthWrite = solid; roofMat.needsUpdate = true;
+  roof.visible = o > 0;
+}
+roofIn.addEventListener('input', () => setRoof(+roofIn.value));
+setRoof(+roofIn.value);
+const bind = (id, fn) => { const el = document.getElementById(id); el.addEventListener('change', () => fn(el.checked)); fn(el.checked); };
+bind('c-labels', v => labels.forEach(l => l.visible = v));
+bind('c-rafters', v => rafters.visible = v);
+bind('c-ceiling', v => ceiling.visible = v);
+bind('c-trees', v => trees.visible = v);
+
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let tween = null;
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  const to = target.clone().add(VIEWS[b.dataset.view].clone().normalize().multiplyScalar(DIST));
+  if (reduce) { cam.position.copy(to); controls.target.copy(target); cam.zoom = 1; cam.updateProjectionMatrix(); return; }
+  tween = { from: cam.position.clone(), to, tFrom: controls.target.clone(), z0: cam.zoom, t0: performance.now() };
+}));
+
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h); labelR.setSize(w, h);
+  const a = w / h;
+  const hw = a >= 1 ? S * a : S, hh = a >= 1 ? S : S / a;
+  Object.assign(cam, { left: -hw, right: hw, top: hh, bottom: -hh });
+  cam.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host);
+resize();
+
+function loop(t) {
+  if (tween) {
+    let k = Math.min((t - tween.t0) / 700, 1); const e = 1 - Math.pow(1 - k, 3);
+    cam.position.lerpVectors(tween.from, tween.to, e);
+    controls.target.lerpVectors(tween.tFrom, target, e);
+    cam.zoom = tween.z0 + (1 - tween.z0) * e; cam.updateProjectionMatrix();
+    if (k >= 1) tween = null;
+  }
+  controls.update();
+  renderer.render(scene, cam);
+  labelR.render(scene, cam);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
